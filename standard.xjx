@@ -1,0 +1,130 @@
+!XJX
+19 999 199
+
+!RAM
+# Bootstrap 0
+4
+1999
+3
+5
+
+# Init ASM 4
+# 1013
+# 2999
+1018
+3999
+1023
+4999
+# 1028
+# 5999
+# 1033
+# 6999
+# 1039
+# 7999
+# 1041
+# 8999
+# 1049
+# 9999
+# 1057
+# 10999
+1063
+11999
+
+# Real program 10
+4015
+4016
+4017
+3014
+0
+11000
+5
+10
+
+!MC
+# FDE 0
+pc_ab
+ram_db
+db_ins
+nop
+
+# UMC 4
+ins_mur1
+pc_inc
+pc_ab
+ram_db
+db_ins
+ins_mur2
+mur_mc
+pc_inc
+mc_0
+
+# TAKE 13
+ins_ab
+ram_db
+db_acc
+pc_inc
+mc_0
+
+# SAVE 18
+ins_ab
+acc_db
+db_ram
+pc_inc
+mc_0
+
+# ADD 23
+ins_ab
+ram_db
+plus
+pc_inc
+mc_0
+
+# SUB 28
+ins_ab
+ram_db
+minus
+pc_inc
+mc_0
+
+# TEST 33
+ins_ab
+ram_db
+db_acc
+if_0_pc_inc
+pc_inc
+mc_0
+
+# JUMP 39
+ins_pc
+pc_ab
+
+# INC 41
+ins_ab
+ram_db
+db_acc
+acc_inc
+acc_db
+db_ram
+pc_inc
+mc_0
+
+# DEC 49
+ins_ab
+ram_db
+db_acc
+acc_dec
+acc_db
+db_ram
+pc_inc
+mc_0
+
+# NULL 57
+acc_0
+acc_db
+ins_ab
+db_ram
+pc_inc
+mc_0
+
+# STOP 63
+stop
