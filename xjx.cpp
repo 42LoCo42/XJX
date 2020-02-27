@@ -82,7 +82,7 @@ bool XJX::execMOP() {
 	case pc_ab:			address_bus = program_counter; break;
 	case pc_inc:		++program_counter; break;
 	case if_0_pc_inc:	if(acc == 0) ++program_counter; break;
-	case ins_pc:		program_counter = ins; break;
+	case ins_pc:		program_counter = lo(ins); break;
 	case acc_0:			acc = 0; break;
 	case plus:			acc += data_bus; accCheck(); break;
 	case minus:			acc -= data_bus; accCheck(); break;
