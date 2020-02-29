@@ -2,7 +2,7 @@
 #include <string>
 #include <ncurses.h>
 #include "xjx.h"
-#include "fileloader.h"
+#include "utils.h"
 using namespace std;
 
 const string& mcToName(uint mc) {
@@ -16,6 +16,7 @@ void printw(const string& s) {
 }
 
 void printAll() {
+//	mvwin(stdscr, 0, 0);
 	clear();
 
 	printw("==== Buses ====\n");
@@ -82,21 +83,40 @@ void printAll() {
 	refresh();
 }
 
-int main() {
+int main(int argc, char** argv) {
 	// init ncurses
 	initscr();
 	raw();
 	noecho();
 
-	if(!FileLoader::loadXJX("standard.xjx")) {
-		printw("standard.xjx not found!");
+	if(argc == 1) {
+		if(!Utils::loadXJX("standard.xjx")) {
+			endwin();
+			cout << "standard.xjx not found!" << endl;
+			exit(1);
+		}
+	} else if(argc == 4) {
+		if(!Utils::loadXJX(argv[1])) {
+			endwin();
+			cout << argv[1] << " not found!" << endl;
+			exit(1);
+		}
+	} else {
+		endwin();
+		cout << "Invalid number of arguments!" << endl;
+		exit(1);
 	}
 
 	bool running = true;
+	int delay = 50;
+	// start clock when loaded as module
+	bool clock_running = argc != 1;
+	if(argc != 1) timeout(delay);
+
 	while(running) {
 		printAll();
 		int command = getch();
-		if(command == '.') {
+		if(command == '.' || command == ERR) {
 			if(!XJX::execMOP()) running = false;
 		} else if(command == 'q') running = false;
 		else if(command == ' ') {
@@ -107,8 +127,16 @@ int main() {
 				}
 			}
 			while(XJX::mc_addr != 1);
-		} else if(command == 'l') {
-			FileLoader::loadXJX("standard.xjx");
+		} else if(command == 'p') {
+			clock_running = !clock_running;
+			if(clock_running) timeout(delay);
+			else timeout(-1);
+		} else if(command == '+') {
+			delay -= 50;
+			timeout(delay);
+		} else if(command == '-') {
+			delay += 50;
+			timeout(delay);
 		}
 	}
 	endwin();

@@ -1,11 +1,10 @@
-#include "fileloader.h"
+#include "utils.h"
 #include <iostream>
 #include <fstream>
-#include <vector>
 #include "xjx.h"
 using namespace std;
 
-void split(const string& s, const string& delim, vector<string>& parts) {
+void Utils::split(const string& s, const string& delim, vector<string>& parts) {
 	size_t pos = 0;
 	size_t start = 0;
 	std::string token;
@@ -20,7 +19,7 @@ void split(const string& s, const string& delim, vector<string>& parts) {
 	parts.push_back(s.substr(start, s.length() - start));
 }
 
-auto FileLoader::loadXJX(const string& filename) -> bool {
+auto Utils::loadXJX(const string& filename) -> bool {
 	ifstream file(filename);
 	string contents;
 
@@ -43,6 +42,8 @@ auto FileLoader::loadXJX(const string& filename) -> bool {
 		johnny_header,
 		ram,
 		mc,
+		io,
+		io_desc,
 	} state = null;
 
 	size_t index = 0;
@@ -53,12 +54,15 @@ auto FileLoader::loadXJX(const string& filename) -> bool {
 		else if(line == "!RAM") {
 			state = ram;
 			index = 0;
-		}
-		else if(line == "!MC") {
+		} else if(line == "!MC") {
 			state = mc;
 			index = 0;
-		}
-		else if(state == xjx_header) {
+		} else if(line == "!IO") {
+			state = io;
+		} else if(line == "!IO_DESC") {
+			state = io_desc;
+			index = 0;
+		} else if(state == xjx_header) {
 			vector<string> header_parts;
 			split(line, " ", header_parts);
 			XJX::hi_max = stoi(header_parts[0]);
@@ -84,6 +88,8 @@ auto FileLoader::loadXJX(const string& filename) -> bool {
 					++index;
 				}
 			}
+		} else if(state == io) {
+
 		}
 	}
 

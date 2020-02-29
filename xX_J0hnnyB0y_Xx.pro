@@ -4,12 +4,12 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-		fileloader.cpp \
 		main.cpp \
+		utils.cpp \
 		xjx.cpp
 
 HEADERS += \
-	fileloader.h \
+	utils.h \
 	xjx.h
 
 unix:!macx: LIBS += -lncurses

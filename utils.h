@@ -2,8 +2,11 @@
 #define FILELOADER_H
 
 #include <string>
+#include <vector>
 
-namespace FileLoader {
+namespace Utils {
+void split(const std::string& s, const std::string& delim, std::vector<std::string>& parts);
+
 auto loadXJX(const std::string& filename) -> bool;
 }
 

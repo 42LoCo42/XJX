@@ -1,6 +1,10 @@
 #include "xjx.h"
+#include "utils.h"
 #include <cmath>
 #include <stdexcept>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 using namespace std;
 
 // Buses
@@ -28,6 +32,12 @@ uint XJX::acc;
 // Name lookup
 map<uint, pair<string, string>> XJX::mcToName;
 map<string, uint> XJX::nameToMC;
+
+// IO
+map<uint, pair<const char*, char**>> XJX::io_entries;
+vector<XJX::IOMapping> XJX::io_mappings;
+
+const string FIFO_DIR = ".xjx_fifos/";
 
 void XJX::init() {
 	if(ram.size() != lo_max + 1) ram.resize(lo_max + 1);
@@ -61,6 +71,7 @@ void XJX::init() {
 	mcToName.insert({ins_mur1, {"ins -> mur (mc_addr)", "ins_mur1"}});
 	mcToName.insert({ins_mur2, {"ins -> mur (mop, asm_ref)", "ins_mur2"}});
 	mcToName.insert({mur_mc, {"mur -> mc", "mur_mc"}});
+	mcToName.insert({iomap, {"iomap", "iomap"}});
 
 	for(auto it = mcToName.begin(); it != mcToName.end(); ++it) {
 		nameToMC.insert({it->second.second, it->first});
@@ -77,7 +88,7 @@ bool XJX::execMOP() {
 	case db_ins:		ins = data_bus; break;
 	case ins_ab:		address_bus = lo(ins); break;
 	case ins_mc:		mc_addr = lookupAsm(hi(ins)) - 1; break;
-	// u6 is UNUSED
+		// u6 is UNUSED
 	case mc_0:			mc_addr = -1; break;
 	case pc_ab:			address_bus = program_counter; break;
 	case pc_inc:		++program_counter; break;
@@ -92,11 +103,12 @@ bool XJX::execMOP() {
 	case db_acc:		acc = data_bus; accCheck(); break;
 	case stop:			res = false; break;
 
-	// xjx custom microcode
+		// xjx custom microcode
 	case ins_db:		data_bus = lo(ins); break;
 	case ins_mur1:		mur[0] = lo(ins); break;
 	case ins_mur2:		mur[1] = lo(ins); mur[2] = hi(ins); break;
 	case mur_mc:		murToMC(); break;
+	case iomap:         ioMap(); break;
 
 	default:			throw runtime_error("Unknown MicroOperation " + to_string(microcode[mc_addr]) +	" at address " + to_string(mc_addr));
 	}
@@ -142,4 +154,66 @@ void XJX::murToMC() {
 	mur[0] = 0;
 	mur[1] = 0;
 	mur[2] = 0;
+}
+
+void XJX::ioMap() {
+	// load command
+	uint min_addr = lo(ins);
+	uint entry = ram[min_addr];
+	if(io_entries.count(entry) == 0) return;
+	const auto& command = io_entries.at(entry);
+
+	// execute command
+	fflush(nullptr);
+	pid_t pid = fork();
+	if(pid == 0) { // child
+		execv(command.first, command.second);
+		exit(1);
+	} else { // parent
+		// create and open fifos
+		mkdir(FIFO_DIR.c_str(), 0755);
+		const char* from_fifo = (FIFO_DIR + "from_" + to_string(entry)).c_str();
+		const char* to_fifo = (FIFO_DIR + "to_" + to_string(entry)).c_str();
+		mkfifo(from_fifo, 0644);
+		mkfifo(to_fifo, 0644);
+		int in = open(from_fifo, O_RDONLY);
+		int out = open(to_fifo, O_WRONLY);
+
+		// read min and max relative addresses
+		string data;
+		vector<string> parts;
+		safeRead(in, data);
+		Utils::split(data, " ", parts);
+		if(parts.size() == 2) {
+			uint m_min_addr = stoi(parts[0]);
+			uint m_max_addr = stoi(parts[1]);
+			int offset = m_min_addr - min_addr;
+			uint max_addr = m_max_addr - offset;
+			io_mappings.push_back({min_addr, max_addr, offset, in, out});
+		}
+
+		fcntl(in, F_SETFL, O_NONBLOCK);
+	}
+}
+
+ssize_t XJX::safeRead(int fd, string& data) {
+	data.clear();
+
+	unsigned char header[1];
+	ssize_t len = read(fd, header, 1);
+	if(len != 1) return len;
+	char* buf = new char[header[0]];
+	len = read(fd, buf, header[0]);
+	data = buf;
+	delete[] buf;
+	return len;
+}
+
+ssize_t XJX::safeWrite(int fd, const string& data) {
+	if(data.size() > (1 << 8)) return -1;
+
+	ssize_t len = write(fd, string(1, data.size()).c_str(), 1);
+	if(len != 1) return len;
+	len	= write(fd, data.c_str(), data.size());
+	return len;
 }

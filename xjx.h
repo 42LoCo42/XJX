@@ -32,6 +32,7 @@ enum MicroOperation {
 	ins_mur1	= 21, // lo -> mc_addr
 	ins_mur2	= 22, // lo -> mop, hi -> asm_reference
 	mur_mc		= 23, // writes mur to mc
+	iomap       = 24,
 };
 
 // Buses
@@ -59,6 +60,17 @@ extern uint acc;
 // Name lookup
 extern std::map<uint, std::pair<std::string, std::string>> mcToName;
 extern std::map<std::string, uint> nameToMC;
+
+// IO
+struct IOMapping {
+	uint min_addr;
+	uint max_addr;
+	int offset;
+	int in;
+	int out;
+};
+extern std::map<uint, std::pair<const char*, char**>> io_entries;
+extern std::vector<IOMapping> io_mappings;
 
 /**
  * @brief init Updates all static data
@@ -98,6 +110,14 @@ void accCheck();
  * @brief updateAsmRef Inserts or updates an ASM -> MicroCode address reference from the MUR
  */
 void murToMC();
+
+/**
+ * @brief ioMap Loads a module and maps its IO memory region to us.
+ */
+void ioMap();
+
+ssize_t safeRead(int fd, std::string& data);
+ssize_t safeWrite(int fd, const std::string& data);
 }
 
 #endif // CPU_H
