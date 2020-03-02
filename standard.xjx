@@ -1,6 +1,9 @@
 !XJX
 19 999 199
 
+!IO_DESC
+st -e ./xX_J0hnnyB0y_Xx test.xjx @PIPE_IN@ @PIPE_OUT@
+
 !RAM
 # Bootstrap 0
 4
@@ -9,46 +12,43 @@
 5
 
 # Init ASM 4
-## TAKE
-# 1013
-# 2999
+# TAKE
+1013
+2999
 # SAVE
 1018
 3999
 # ADD
 1023
 4999
-## SUB
-# 1028
-# 5999
-## TEST
-# 1033
-# 6999
-## JUMP
-# 1039
-# 7999
-## INC
-# 1041
-# 8999
-## DEC
-# 1049
-# 9999
-## NULL
-# 1057
-# 10999
+# SUB
+1028
+5999
+# TEST
+1033
+6999
+# JUMP
+1039
+7999
+# INC
+1042
+8999
+# DEC
+1050
+9999
+# NULL
+1058
+10999
 # STOP
-1063
+1064
 11999
+# IOMAP
+1065
+12999
 
-# Real program 10
-4015
-4016
-4017
-3014
+# Real program 26
+12027
 0
-11000
-5
-10
 
 !MC
 # FDE 0
@@ -107,8 +107,9 @@ mc_0
 # JUMP 39
 ins_pc
 pc_ab
+mc_0
 
-# INC 41
+# INC 42
 ins_ab
 ram_db
 db_acc
@@ -118,7 +119,7 @@ db_ram
 pc_inc
 mc_0
 
-# DEC 49
+# DEC 50
 ins_ab
 ram_db
 db_acc
@@ -128,7 +129,7 @@ db_ram
 pc_inc
 mc_0
 
-# NULL 57
+# NULL 58
 acc_0
 acc_db
 ins_ab
@@ -136,5 +137,10 @@ db_ram
 pc_inc
 mc_0
 
-# STOP 63
+# STOP 64
 stop
+
+# IOMAP 65
+iomap
+pc_inc
+mc_0

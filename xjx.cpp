@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <cstdlib>
+#include <ctime>
 using namespace std;
 
 // Buses
@@ -33,9 +35,17 @@ uint XJX::acc;
 map<uint, pair<string, string>> XJX::mcToName;
 map<string, uint> XJX::nameToMC;
 
-// IO
-map<uint, pair<const char*, char**>> XJX::io_entries;
+// IO - Master
+vector<vector<string>> XJX::io_entries;
 vector<XJX::IOMapping> XJX::io_mappings;
+
+// IO - Slave
+uint XJX::io_min_addr;
+uint XJX::io_max_addr;
+string XJX::in_fifo_path;
+string XJX::out_fifo_path;
+int XJX::in_fifo;
+int XJX::out_fifo;
 
 const string FIFO_DIR = ".xjx_fifos/";
 
@@ -160,24 +170,43 @@ void XJX::ioMap() {
 	// load command
 	uint min_addr = lo(ins);
 	uint entry = ram[min_addr];
-	if(io_entries.count(entry) == 0) return;
-	const auto& command = io_entries.at(entry);
+	if(io_entries.size() <= entry ) return;
+
+	// generate fifo paths
+	srand(time(nullptr));
+	const string ran_prefix = to_string(rand());
+	const string entry_string = to_string(entry);
+	const string from_fifo  = FIFO_DIR + ran_prefix + "_from_" + entry_string;
+	const string to_fifo    = FIFO_DIR + ran_prefix + "_to_"   + entry_string;
 
 	// execute command
 	fflush(nullptr);
 	pid_t pid = fork();
 	if(pid == 0) { // child
-		execv(command.first, command.second);
-		exit(1);
+		auto& command = io_entries[entry];
+		const char* program = command[0].c_str();
+		vector<const char*> args;
+		for(auto& c : command) {
+			if(c == "@PIPE_OUT@") {
+				args.push_back(from_fifo.c_str());
+			} else if(c == "@PIPE_IN@") {
+				args.push_back(to_fifo.c_str());
+			} else {
+				args.push_back(c.data());
+			}
+		}
+		args.push_back(nullptr);
+
+		execvp(program, const_cast<char**>(args.data()));
 	} else { // parent
 		// create and open fifos
 		mkdir(FIFO_DIR.c_str(), 0755);
-		const char* from_fifo = (FIFO_DIR + "from_" + to_string(entry)).c_str();
-		const char* to_fifo = (FIFO_DIR + "to_" + to_string(entry)).c_str();
-		mkfifo(from_fifo, 0644);
-		mkfifo(to_fifo, 0644);
-		int in = open(from_fifo, O_RDONLY);
-		int out = open(to_fifo, O_WRONLY);
+		mkfifo(from_fifo.c_str(), 0644);
+		mkfifo(to_fifo.c_str(), 0644);
+		int out = open(to_fifo.c_str(), O_WRONLY);
+		int in = open(from_fifo.c_str(), O_RDONLY);
+
+		if(in == -1 || out == -1) return;
 
 		// read min and max relative addresses
 		string data;
@@ -190,10 +219,16 @@ void XJX::ioMap() {
 			int offset = m_min_addr - min_addr;
 			uint max_addr = m_max_addr - offset;
 			io_mappings.push_back({min_addr, max_addr, offset, in, out});
+			fcntl(in, F_SETFL, O_NONBLOCK);
 		}
-
-		fcntl(in, F_SETFL, O_NONBLOCK);
 	}
+}
+
+void XJX::setupIO() {
+	in_fifo = open(in_fifo_path.c_str(), O_RDONLY);
+	out_fifo = open(out_fifo_path.c_str(), O_WRONLY);
+	if(in_fifo == -1 || out_fifo == -1) return;
+	safeWrite(out_fifo, to_string(io_min_addr) + ' ' + to_string(io_max_addr));
 }
 
 ssize_t XJX::safeRead(int fd, string& data) {
@@ -202,8 +237,9 @@ ssize_t XJX::safeRead(int fd, string& data) {
 	unsigned char header[1];
 	ssize_t len = read(fd, header, 1);
 	if(len != 1) return len;
-	char* buf = new char[header[0]];
+	char* buf = new char[header[0]+1];
 	len = read(fd, buf, header[0]);
+	buf[header[0]] = 0;
 	data = buf;
 	delete[] buf;
 	return len;

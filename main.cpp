@@ -16,7 +16,6 @@ void printw(const string& s) {
 }
 
 void printAll() {
-//	mvwin(stdscr, 0, 0);
 	clear();
 
 	printw("==== Buses ====\n");
@@ -101,6 +100,9 @@ int main(int argc, char** argv) {
 			cout << argv[1] << " not found!" << endl;
 			exit(1);
 		}
+		XJX::in_fifo_path = argv[2];
+		XJX::out_fifo_path = argv[3];
+		XJX::setupIO();
 	} else {
 		endwin();
 		cout << "Invalid number of arguments!" << endl;

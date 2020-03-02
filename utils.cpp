@@ -61,7 +61,6 @@ auto Utils::loadXJX(const string& filename) -> bool {
 			state = io;
 		} else if(line == "!IO_DESC") {
 			state = io_desc;
-			index = 0;
 		} else if(state == xjx_header) {
 			vector<string> header_parts;
 			split(line, " ", header_parts);
@@ -89,7 +88,18 @@ auto Utils::loadXJX(const string& filename) -> bool {
 				}
 			}
 		} else if(state == io) {
-
+			vector<string> addrs;
+			split(line, " ", addrs);
+			if(addrs.size() == 2) {
+				XJX::io_min_addr = stoi(addrs[0]);
+				XJX::io_max_addr = stoi(addrs[1]);
+				state = null;
+			}
+		} else if(state == io_desc) {
+			vector<string> parts;
+			split(line, " ", parts);
+			if(parts.empty()) continue;
+			XJX::io_entries.push_back(parts);
 		}
 	}
 

@@ -61,7 +61,7 @@ extern uint acc;
 extern std::map<uint, std::pair<std::string, std::string>> mcToName;
 extern std::map<std::string, uint> nameToMC;
 
-// IO
+// IO - Master
 struct IOMapping {
 	uint min_addr;
 	uint max_addr;
@@ -69,8 +69,16 @@ struct IOMapping {
 	int in;
 	int out;
 };
-extern std::map<uint, std::pair<const char*, char**>> io_entries;
+extern std::vector<std::vector<std::string>> io_entries;
 extern std::vector<IOMapping> io_mappings;
+
+// IO - Slave
+extern uint io_min_addr;
+extern uint io_max_addr;
+extern std::string in_fifo_path;
+extern std::string out_fifo_path;
+extern int in_fifo;
+extern int out_fifo;
 
 /**
  * @brief init Updates all static data
@@ -115,6 +123,11 @@ void murToMC();
  * @brief ioMap Loads a module and maps its IO memory region to us.
  */
 void ioMap();
+
+/**
+ * @brief setupIO Connects to the master module
+ */
+void setupIO();
 
 ssize_t safeRead(int fd, std::string& data);
 ssize_t safeWrite(int fd, const std::string& data);
