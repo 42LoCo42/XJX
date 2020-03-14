@@ -66,13 +66,14 @@ struct IOMapping {
 	uint min_addr;
 	uint max_addr;
 	int offset;
-	int in;
-	int out;
+	int from_fifo;
+	int to_fifo;
 };
 extern std::vector<std::vector<std::string>> io_entries;
 extern std::vector<IOMapping> io_mappings;
 
 // IO - Slave
+extern bool is_module;
 extern uint io_min_addr;
 extern uint io_max_addr;
 extern std::string in_fifo_path;
@@ -120,7 +121,7 @@ void accCheck();
 void murToMC();
 
 /**
- * @brief ioMap Loads a module and maps its IO memory region to us.
+ * @brief ioMap Loads a module and maps its IO memory region to us
  */
 void ioMap();
 
@@ -128,6 +129,16 @@ void ioMap();
  * @brief setupIO Connects to the master module
  */
 void setupIO();
+
+/**
+ * @brief readMsg Reads incoming messages an updates IO mapped regions
+ */
+void readMsg();
+
+/**
+ * @brief sendMsg Sends a message to all affected modules
+ */
+void sendMsg();
 
 ssize_t safeRead(int fd, std::string& data);
 ssize_t safeWrite(int fd, const std::string& data);

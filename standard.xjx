@@ -2,7 +2,8 @@
 19 999 199
 
 !IO_DESC
-st -e ./xX_J0hnnyB0y_Xx test.xjx @PIPE_IN@ @PIPE_OUT@
+true
+./xX_J0hnnyB0y_Xx stack.xjx @PIPE_IN@ @PIPE_OUT@
 
 !RAM
 # Bootstrap 0
@@ -47,17 +48,52 @@ st -e ./xX_J0hnnyB0y_Xx test.xjx @PIPE_IN@ @PIPE_OUT@
 12999
 
 # Real program 26
-12027
+12060
+
+# Push 42 27
+6060
+7027
+2050
+3061
+2048
+3060
+
+# Push 37 33
+6060
+7033
+2051
+3061
+2048
+3060
+
+# Pop 39
+6060
+7039
+2049
+3060
+6060
+7043
+2061
+3052
+
+# stop 47
+11000
+
+# Data 48
+1
+2
+42
+37
 0
 
 !MC
-# FDE 0
+# FDE 0 0
 pc_ab
 ram_db
 db_ins
 nop
 
-# UMC 4
+# UMC 4 1
 ins_mur1
 pc_inc
 pc_ab
@@ -68,35 +104,35 @@ mur_mc
 pc_inc
 mc_0
 
-# TAKE 13
+# TAKE 13 2
 ins_ab
 ram_db
 db_acc
 pc_inc
 mc_0
 
-# SAVE 18
+# SAVE 18 3
 ins_ab
 acc_db
 db_ram
 pc_inc
 mc_0
 
-# ADD 23
+# ADD 23 4
 ins_ab
 ram_db
 plus
 pc_inc
 mc_0
 
-# SUB 28
+# SUB 28 5
 ins_ab
 ram_db
 minus
 pc_inc
 mc_0
 
-# TEST 33
+# TEST 33 6
 ins_ab
 ram_db
 db_acc
@@ -104,12 +140,12 @@ if_0_pc_inc
 pc_inc
 mc_0
 
-# JUMP 39
+# JUMP 39 7
 ins_pc
 pc_ab
 mc_0
 
-# INC 42
+# INC 42 8
 ins_ab
 ram_db
 db_acc
@@ -119,7 +155,7 @@ db_ram
 pc_inc
 mc_0
 
-# DEC 50
+# DEC 50 9
 ins_ab
 ram_db
 db_acc
@@ -129,7 +165,7 @@ db_ram
 pc_inc
 mc_0
 
-# NULL 58
+# NULL 58 10
 acc_0
 acc_db
 ins_ab
@@ -137,10 +173,10 @@ db_ram
 pc_inc
 mc_0
 
-# STOP 64
+# STOP 64 11
 stop
 
-# IOMAP 65
+# IOMAP 65 12
 iomap
 pc_inc
 mc_0

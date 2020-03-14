@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <ctime>
+
+#include <ncurses.h>
 using namespace std;
 
 // Buses
@@ -40,6 +42,7 @@ vector<vector<string>> XJX::io_entries;
 vector<XJX::IOMapping> XJX::io_mappings;
 
 // IO - Slave
+bool XJX::is_module = false;
 uint XJX::io_min_addr;
 uint XJX::io_max_addr;
 string XJX::in_fifo_path;
@@ -93,8 +96,8 @@ bool XJX::execMOP() {
 
 	switch(microcode[mc_addr]) {
 	case nop:			break;
-	case db_ram:		ram[address_bus] = data_bus; break;
-	case ram_db:		data_bus = ram[address_bus]; break;
+	case db_ram:		readMsg(); ram[address_bus] = data_bus; sendMsg(); break;
+	case ram_db:		readMsg(); data_bus = ram[address_bus]; break;
 	case db_ins:		ins = data_bus; break;
 	case ins_ab:		address_bus = lo(ins); break;
 	case ins_mc:		mc_addr = lookupAsm(hi(ins)) - 1; break;
@@ -118,7 +121,7 @@ bool XJX::execMOP() {
 	case ins_mur1:		mur[0] = lo(ins); break;
 	case ins_mur2:		mur[1] = lo(ins); mur[2] = hi(ins); break;
 	case mur_mc:		murToMC(); break;
-	case iomap:         ioMap(); break;
+	case iomap:         readMsg(); ioMap(); break;
 
 	default:			throw runtime_error("Unknown MicroOperation " + to_string(microcode[mc_addr]) +	" at address " + to_string(mc_addr));
 	}
@@ -176,8 +179,13 @@ void XJX::ioMap() {
 	srand(time(nullptr));
 	const string ran_prefix = to_string(rand());
 	const string entry_string = to_string(entry);
-	const string from_fifo  = FIFO_DIR + ran_prefix + "_from_" + entry_string;
-	const string to_fifo    = FIFO_DIR + ran_prefix + "_to_"   + entry_string;
+	const string from_fifo_path  = FIFO_DIR + ran_prefix + "_from_" + entry_string;
+	const string to_fifo_path    = FIFO_DIR + ran_prefix + "_to_"   + entry_string;
+
+	// create fifos
+	mkdir(FIFO_DIR.c_str(), 0755);
+	mkfifo(from_fifo_path.c_str(), 0644);
+	mkfifo(to_fifo_path.c_str(), 0644);
 
 	// execute command
 	fflush(nullptr);
@@ -188,47 +196,105 @@ void XJX::ioMap() {
 		vector<const char*> args;
 		for(auto& c : command) {
 			if(c == "@PIPE_OUT@") {
-				args.push_back(from_fifo.c_str());
+				args.push_back(from_fifo_path.c_str());
 			} else if(c == "@PIPE_IN@") {
-				args.push_back(to_fifo.c_str());
+				args.push_back(to_fifo_path.c_str());
 			} else {
 				args.push_back(c.data());
 			}
 		}
 		args.push_back(nullptr);
-
 		execvp(program, const_cast<char**>(args.data()));
 	} else { // parent
-		// create and open fifos
-		mkdir(FIFO_DIR.c_str(), 0755);
-		mkfifo(from_fifo.c_str(), 0644);
-		mkfifo(to_fifo.c_str(), 0644);
-		int out = open(to_fifo.c_str(), O_WRONLY);
-		int in = open(from_fifo.c_str(), O_RDONLY);
+		// open fifos
+		mvprintw(12, 0, "Waiting for %s ...", to_fifo_path.c_str());
+		refresh();
+		int to_fifo = open(to_fifo_path.c_str(), O_WRONLY);
+		mvprintw(13, 0, "Waiting for %s ...", from_fifo_path.c_str());
+		refresh();
+		int from_fifo = open(from_fifo_path.c_str(), O_RDONLY);
 
-		if(in == -1 || out == -1) return;
+		// clear lines
+		int y, x;
+		getyx(stdscr, y, x);
+		move(12, 0);
+		clrtoeol();
+		move(13, 0);
+		clrtoeol();
+		move(y, x);
 
-		// read min and max relative addresses
+		if(to_fifo == -1 || from_fifo == -1) return;
+
+		// read and process start message
 		string data;
 		vector<string> parts;
-		safeRead(in, data);
+		safeRead(from_fifo, data);
 		Utils::split(data, " ", parts);
 		if(parts.size() == 2) {
 			uint m_min_addr = stoi(parts[0]);
 			uint m_max_addr = stoi(parts[1]);
 			int offset = m_min_addr - min_addr;
 			uint max_addr = m_max_addr - offset;
-			io_mappings.push_back({min_addr, max_addr, offset, in, out});
-			fcntl(in, F_SETFL, O_NONBLOCK);
+			io_mappings.push_back({min_addr, max_addr, offset, from_fifo, to_fifo});
+			fcntl(from_fifo, F_SETFL, O_NONBLOCK);
 		}
 	}
 }
 
 void XJX::setupIO() {
+	// open fifos
 	in_fifo = open(in_fifo_path.c_str(), O_RDONLY);
 	out_fifo = open(out_fifo_path.c_str(), O_WRONLY);
 	if(in_fifo == -1 || out_fifo == -1) return;
+
+	// send start message
 	safeWrite(out_fifo, to_string(io_min_addr) + ' ' + to_string(io_max_addr));
+	fcntl(in_fifo, F_SETFL, O_NONBLOCK);
+	fcntl(out_fifo, F_SETFL, O_NONBLOCK);
+
+	is_module = true;
+
+	// send our mapped RAM to master
+	for(uint addr = io_min_addr; addr <= io_max_addr; ++addr) {
+		safeWrite(out_fifo, to_string(addr) + ' ' + to_string(ram[addr]));
+	}
+}
+
+void XJX::readMsg() {
+	string msg;
+	vector<string> parts;
+
+	// read from master
+	while(is_module && safeRead(in_fifo, msg) > 0) {
+		Utils::split(msg, " ", parts);
+		if(parts.size() == 2) {
+			ram[stoi(parts[0])] = stoi(parts[1]);
+		}
+	}
+
+	// read from modules
+	for(auto& module : io_mappings) {
+		while(safeRead(module.from_fifo, msg) > 0) {
+			Utils::split(msg, " ", parts);
+			if(parts.size() == 2) {
+				ram[stoi(parts[0]) - module.offset] = stoi(parts[1]);
+			}
+		}
+	}
+}
+
+void XJX::sendMsg() {
+	// send to master
+	if(is_module && address_bus >= io_min_addr && address_bus <= io_max_addr) {
+		safeWrite(out_fifo, to_string(address_bus) + ' ' + to_string(ram[address_bus]));
+	}
+
+	// send to modules
+	for(auto& module : io_mappings) {
+		if(address_bus >= module.min_addr && address_bus <= module.max_addr) {
+			safeWrite(module.to_fifo, to_string(address_bus + module.offset) + ' ' + to_string(ram[address_bus]));
+		}
+	}
 }
 
 ssize_t XJX::safeRead(int fd, string& data) {
