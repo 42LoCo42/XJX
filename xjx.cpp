@@ -1,12 +1,12 @@
 #include "xjx.h"
 #include "utils.h"
 #include <cmath>
-#include <stdexcept>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <cstdlib>
 #include <ctime>
+#include <fcntl.h>
+#include <stdexcept>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <ncurses.h>
 using namespace std;
@@ -28,7 +28,8 @@ vector<uint> XJX::microcode;
 uint XJX::mc_addr;
 uint XJX::mc_addr_max = 199;
 map<uint, uint> XJX::asm_reference; // maps assembler to microcode address
-uint XJX::mur[3]; // microcode update register, stores address, mop, asm_reference
+uint XJX::mur[3]; // microcode update register, stores address, mop,
+                  // asm_reference
 
 // ALU
 uint XJX::acc;
@@ -53,8 +54,10 @@ int XJX::out_fifo;
 const string FIFO_DIR = ".xjx_fifos/";
 
 void XJX::init() {
-	if(ram.size() != lo_max + 1) ram.resize(lo_max + 1);
-	if(microcode.size() != mc_addr_max + 1) microcode.resize(mc_addr_max + 1);
+	if(ram.size() != lo_max + 1)
+		ram.resize(lo_max + 1);
+	if(microcode.size() != mc_addr_max + 1)
+		microcode.resize(mc_addr_max + 1);
 
 	modulus = pow(10, floor(log10(lo_max)) + 1);
 
@@ -95,35 +98,97 @@ bool XJX::execMOP() {
 	bool res = true;
 
 	switch(microcode[mc_addr]) {
-	case nop:			break;
-	case db_ram:		readMsg(); ram[address_bus] = data_bus; sendMsg(); break;
-	case ram_db:		readMsg(); data_bus = ram[address_bus]; break;
-	case db_ins:		ins = data_bus; break;
-	case ins_ab:		address_bus = lo(ins); break;
-	case ins_mc:		mc_addr = lookupAsm(hi(ins)) - 1; break;
+	case nop:
+		break;
+	case db_ram:
+		readMsg();
+		ram[address_bus] = data_bus;
+		sendMsg();
+		break;
+	case ram_db:
+		readMsg();
+		data_bus = ram[address_bus];
+		break;
+	case db_ins:
+		ins = data_bus;
+		break;
+	case ins_ab:
+		address_bus = lo(ins);
+		break;
+	case ins_mc:
+		mc_addr = lookupAsm(hi(ins)) - 1;
+		break;
 		// u6 is UNUSED
-	case mc_0:			mc_addr = -1; break;
-	case pc_ab:			address_bus = program_counter; break;
-	case pc_inc:		++program_counter; break;
-	case if_0_pc_inc:	if(acc == 0) ++program_counter; break;
-	case ins_pc:		program_counter = lo(ins); break;
-	case acc_0:			acc = 0; break;
-	case plus:			acc += data_bus; accCheck(); break;
-	case minus:			acc -= data_bus; accCheck(); break;
-	case acc_db:		data_bus = acc; break;
-	case acc_inc:		++acc; accCheck(); break;
-	case acc_dec:		--acc; accCheck(); break;
-	case db_acc:		acc = data_bus; accCheck(); break;
-	case stop:			res = false; break;
+	case mc_0:
+		mc_addr = -1;
+		break;
+	case pc_ab:
+		address_bus = program_counter;
+		break;
+	case pc_inc:
+		++program_counter;
+		break;
+	case if_0_pc_inc:
+		if(acc == 0)
+			++program_counter;
+		break;
+	case ins_pc:
+		program_counter = lo(ins);
+		break;
+	case acc_0:
+		acc = 0;
+		break;
+	case plus:
+		acc += data_bus;
+		accCheck();
+		break;
+	case minus:
+		acc -= data_bus;
+		accCheck();
+		break;
+	case acc_db:
+		data_bus = acc;
+		break;
+	case acc_inc:
+		++acc;
+		accCheck();
+		break;
+	case acc_dec:
+		--acc;
+		accCheck();
+		break;
+	case db_acc:
+		acc = data_bus;
+		accCheck();
+		break;
+	case stop:
+		res = false;
+		break;
 
 		// xjx custom microcode
-	case ins_db:		data_bus = lo(ins); break;
-	case ins_mur1:		mur[0] = lo(ins); break;
-	case ins_mur2:		mur[1] = lo(ins); mur[2] = hi(ins); break;
-	case mur_mc:		murToMC(); break;
-	case iomap:         readMsg(); ioMap(); break;
+	case ins_db:
+		data_bus = lo(ins);
+		break;
+	case ins_mur1:
+		mur[0] = lo(ins);
+		break;
+	case ins_mur2:
+		mur[1] = lo(ins);
+		mur[2] = hi(ins);
+		break;
+	case mur_mc:
+		murToMC();
+		break;
+	case iomap:
+		readMsg();
+		ioMap();
+		break;
 
-	default:			throw runtime_error("Unknown MicroOperation " + to_string(microcode[mc_addr]) +	" at address " + to_string(mc_addr));
+	default:
+		throw runtime_error(
+			"Unknown MicroOperation " + to_string(microcode[mc_addr]) +
+			" at address " + to_string(mc_addr)
+		);
 	}
 
 	++mc_addr;
@@ -138,13 +203,9 @@ uint XJX::lookupAsm(uint val) {
 	}
 }
 
-uint XJX::hi(uint val) {
-	return val / modulus;
-}
+uint XJX::hi(uint val) { return val / modulus; }
 
-uint XJX::lo(uint val) {
-	return val % modulus;
-}
+uint XJX::lo(uint val) { return val % modulus; }
 
 void XJX::accCheck() {
 	uint max = hi_max * modulus + lo_max;
@@ -154,7 +215,8 @@ void XJX::accCheck() {
 }
 
 void XJX::murToMC() {
-	if(mur[1] != lo_max) microcode[mur[0]] = mur[1];
+	if(mur[1] != lo_max)
+		microcode[mur[0]] = mur[1];
 
 	if(mur[2] != 0) {
 		if(asm_reference.count(mur[2]) == 0) {
@@ -173,14 +235,16 @@ void XJX::ioMap() {
 	// load command
 	uint min_addr = lo(ins);
 	uint entry = ram[min_addr];
-	if(io_entries.size() <= entry ) return;
+	if(io_entries.size() <= entry)
+		return;
 
 	// generate fifo paths
 	srand(time(nullptr));
 	const string ran_prefix = to_string(rand());
 	const string entry_string = to_string(entry);
-	const string from_fifo_path  = FIFO_DIR + ran_prefix + "_from_" + entry_string;
-	const string to_fifo_path    = FIFO_DIR + ran_prefix + "_to_"   + entry_string;
+	const string from_fifo_path =
+		FIFO_DIR + ran_prefix + "_from_" + entry_string;
+	const string to_fifo_path = FIFO_DIR + ran_prefix + "_to_" + entry_string;
 
 	// create fifos
 	mkdir(FIFO_DIR.c_str(), 0755);
@@ -223,7 +287,8 @@ void XJX::ioMap() {
 		clrtoeol();
 		move(y, x);
 
-		if(to_fifo == -1 || from_fifo == -1) return;
+		if(to_fifo == -1 || from_fifo == -1)
+			return;
 
 		// read and process start message
 		string data;
@@ -235,7 +300,9 @@ void XJX::ioMap() {
 			uint m_max_addr = stoi(parts[1]);
 			int offset = m_min_addr - min_addr;
 			uint max_addr = m_max_addr - offset;
-			io_mappings.push_back({min_addr, max_addr, offset, from_fifo, to_fifo});
+			io_mappings.push_back(
+				{min_addr, max_addr, offset, from_fifo, to_fifo}
+			);
 			fcntl(from_fifo, F_SETFL, O_NONBLOCK);
 		}
 	}
@@ -245,7 +312,8 @@ void XJX::setupIO() {
 	// open fifos
 	in_fifo = open(in_fifo_path.c_str(), O_RDONLY);
 	out_fifo = open(out_fifo_path.c_str(), O_WRONLY);
-	if(in_fifo == -1 || out_fifo == -1) return;
+	if(in_fifo == -1 || out_fifo == -1)
+		return;
 
 	// send start message
 	safeWrite(out_fifo, to_string(io_min_addr) + ' ' + to_string(io_max_addr));
@@ -286,13 +354,18 @@ void XJX::readMsg() {
 void XJX::sendMsg() {
 	// send to master
 	if(is_module && address_bus >= io_min_addr && address_bus <= io_max_addr) {
-		safeWrite(out_fifo, to_string(address_bus) + ' ' + to_string(ram[address_bus]));
+		safeWrite(
+			out_fifo, to_string(address_bus) + ' ' + to_string(ram[address_bus])
+		);
 	}
 
 	// send to modules
 	for(auto& module : io_mappings) {
 		if(address_bus >= module.min_addr && address_bus <= module.max_addr) {
-			safeWrite(module.to_fifo, to_string(address_bus + module.offset) + ' ' + to_string(ram[address_bus]));
+			safeWrite(
+				module.to_fifo, to_string(address_bus + module.offset) + ' ' +
+									to_string(ram[address_bus])
+			);
 		}
 	}
 }
@@ -302,8 +375,9 @@ ssize_t XJX::safeRead(int fd, string& data) {
 
 	unsigned char header[1];
 	ssize_t len = read(fd, header, 1);
-	if(len != 1) return len;
-	char* buf = new char[header[0]+1];
+	if(len != 1)
+		return len;
+	char* buf = new char[header[0] + 1];
 	len = read(fd, buf, header[0]);
 	buf[header[0]] = 0;
 	data = buf;
@@ -312,10 +386,12 @@ ssize_t XJX::safeRead(int fd, string& data) {
 }
 
 ssize_t XJX::safeWrite(int fd, const string& data) {
-	if(data.size() > (1 << 8)) return -1;
+	if(data.size() > (1 << 8))
+		return -1;
 
 	ssize_t len = write(fd, string(1, data.size()).c_str(), 1);
-	if(len != 1) return len;
-	len	= write(fd, data.c_str(), data.size());
+	if(len != 1)
+		return len;
+	len = write(fd, data.c_str(), data.size());
 	return len;
 }

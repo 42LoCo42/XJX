@@ -1,21 +1,20 @@
-#include <iostream>
-#include <string>
-#include <ncurses.h>
-#include <cstdio>
-#include <sys/wait.h>
-#include "xjx.h"
 #include "utils.h"
+#include "xjx.h"
+#include <cstdio>
+#include <iostream>
+#include <ncurses.h>
+#include <string>
+#include <sys/wait.h>
 using namespace std;
 
 const string& mcToName(uint mc) {
 	static string empty = "";
-	if(XJX::mcToName.count(mc) == 0) return empty;
+	if(XJX::mcToName.count(mc) == 0)
+		return empty;
 	return XJX::mcToName[mc].first;
 }
 
-void printw(const string& s) {
-	printw(s.c_str());
-}
+void printw(const string& s) { printw("%s", s.c_str()); }
 
 void printAll() {
 	clear();
@@ -63,19 +62,24 @@ void printAll() {
 			printw("---\n");
 		} else {
 			string asm_val = "";
-			for(auto it = XJX::asm_reference.begin(); it != XJX::asm_reference.end(); ++it) {
-				if(it->second == rel) asm_val = to_string(it->first);
+			for(auto it = XJX::asm_reference.begin();
+			    it != XJX::asm_reference.end(); ++it) {
+				if(it->second == rel)
+					asm_val = to_string(it->first);
 			}
-			printw(to_string(rel) + ": "
-				 + to_string(XJX::microcode[rel]) + ' '
-				 + mcToName(XJX::microcode[rel]) + ' '
-				 + (asm_val.empty() ? "" : "(ASM " + asm_val + ')') + '\n');
+			printw(
+				to_string(rel) + ": " + to_string(XJX::microcode[rel]) + ' ' +
+				mcToName(XJX::microcode[rel]) + ' ' +
+				(asm_val.empty() ? "" : "(ASM " + asm_val + ')') + '\n'
+			);
 		}
 	}
 
 	printw("===== MUR =====\n");
 	printw("Addr: " + to_string(XJX::mur[0]) + '\n');
-	printw("MOP:  " + to_string(XJX::mur[1]) + ' ' + mcToName(XJX::mur[1]) + '\n');
+	printw(
+		"MOP:  " + to_string(XJX::mur[1]) + ' ' + mcToName(XJX::mur[1]) + '\n'
+	);
 	printw("Asm:  " + to_string(XJX::mur[2]) + '\n');
 
 	printw("===== ALU =====\n");
@@ -173,24 +177,27 @@ int main(int argc, char** argv) {
 
 	printBlinkenlightsText();
 	while(running) {
-//		printAll();
+		//		printAll();
 		printBlinkenlightsMain();
 		int command = getch();
 		if(command == '.' || command == ERR) {
-			if(!XJX::execMOP()) running = false;
-		} else if(command == 'q') running = false;
+			if(!XJX::execMOP())
+				running = false;
+		} else if(command == 'q')
+			running = false;
 		else if(command == ' ') {
 			do {
 				if(!XJX::execMOP()) {
 					running = false;
 					break;
 				}
-			}
-			while(XJX::mc_addr != 1);
+			} while(XJX::mc_addr != 1);
 		} else if(command == 'p') {
 			clock_running = !clock_running;
-			if(clock_running) timeout(delay);
-			else timeout(-1);
+			if(clock_running)
+				timeout(delay);
+			else
+				timeout(-1);
 		} else if(command == '+') {
 			delay -= 50;
 			timeout(delay);

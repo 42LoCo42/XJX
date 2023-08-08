@@ -1,7 +1,7 @@
 #include "utils.h"
-#include <iostream>
-#include <fstream>
 #include "xjx.h"
+#include <fstream>
+#include <iostream>
 using namespace std;
 
 void Utils::split(const string& s, const string& delim, vector<string>& parts) {
@@ -9,10 +9,10 @@ void Utils::split(const string& s, const string& delim, vector<string>& parts) {
 	size_t start = 0;
 	std::string token;
 	parts.clear();
-	while ((pos = s.find(delim, start)) != std::string::npos) {
+	while((pos = s.find(delim, start)) != std::string::npos) {
 		token = s.substr(start, pos - start);
 		parts.push_back(token);
-		start  = pos + delim.length();
+		start = pos + delim.length();
 	}
 
 	// push last part
@@ -30,11 +30,13 @@ auto Utils::loadXJX(const string& filename) -> bool {
 			contents += line + '\n';
 		}
 		file.close();
-	} else return false;
+	} else
+		return false;
 
 	vector<string> lines;
 	split(contents, "\n", lines);
-	if(lines.empty()) return false;
+	if(lines.empty())
+		return false;
 
 	enum {
 		null,
@@ -48,9 +50,12 @@ auto Utils::loadXJX(const string& filename) -> bool {
 
 	size_t index = 0;
 	for(auto& line : lines) {
-		if(line.empty() || line[0] == '#') continue;
-		if(line == "!XJX") state = xjx_header;
-		else if(line == "!Johnny") state = johnny_header;
+		if(line.empty() || line[0] == '#')
+			continue;
+		if(line == "!XJX")
+			state = xjx_header;
+		else if(line == "!Johnny")
+			state = johnny_header;
 		else if(line == "!RAM") {
 			state = ram;
 			index = 0;
@@ -98,7 +103,8 @@ auto Utils::loadXJX(const string& filename) -> bool {
 		} else if(state == io_desc) {
 			vector<string> parts;
 			split(line, " ", parts);
-			if(parts.empty()) continue;
+			if(parts.empty())
+				continue;
 			XJX::io_entries.push_back(parts);
 		}
 	}
